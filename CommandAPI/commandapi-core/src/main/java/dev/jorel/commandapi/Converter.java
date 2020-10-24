@@ -112,9 +112,9 @@ public abstract class Converter {
 			.withArguments(arguments)
 			.executesNative((sender, args) -> { 
 				if(arguments.equals(PLAIN_ARGUMENTS)) {
-					plugin.getCommand(commandName).execute(mergeProxySender(sender), commandName, ((String) args[0]).split(" "));
+					plugin.getCommand(commandName).execute(mergeProxySender(sender), commandName, ((String) args.getArgs()[0]).split(" "));
 				} else {
-					plugin.getCommand(commandName).execute(mergeProxySender(sender), commandName, (String[]) args);
+					plugin.getCommand(commandName).execute(mergeProxySender(sender), commandName, (String[]) args.getArgs());
 				}
 			});
 		// Good grief, what a hack~

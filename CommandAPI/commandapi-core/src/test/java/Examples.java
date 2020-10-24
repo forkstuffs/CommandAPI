@@ -312,7 +312,6 @@ new CommandAPICommand("remove")
     .withArguments(new EntitySelectorArgument("entities", EntitySelector.MANY_ENTITIES))
     .executes((sender, args) -> {
         //Parse the argument as a collection of entities (as stated above in the documentation)
-        @SuppressWarnings("unchecked")
         Collection<Entity> entities = args.<Collection<Entity>>get(0);
         
         sender.sendMessage("Removed " + entities.size() + " entities");
@@ -345,7 +344,6 @@ new CommandAPICommand("reward")
     .withArguments(new ScoreHolderArgument("players", ScoreHolderType.MULTIPLE))
     .executes((sender, args) -> {
         //Get player names by casting to Collection<String>
-        @SuppressWarnings("unchecked")
         Collection<String> players = args.<Collection<String>>get(0);
         
         for(String playerName : players) {
@@ -659,7 +657,6 @@ new CommandAPICommand("replace")
 	    
 	    // Parse the arguments
 	    int radius = args.<Integer>get(0);
-	    @SuppressWarnings("unchecked")
 	    Predicate<Block> predicate = args.<Predicate<Block>>get(1);
 	    BlockData blockData = args.<BlockData>get(2);
 	    
@@ -694,7 +691,6 @@ new CommandAPICommand("rem")
 	.executesPlayer((player, args) -> {
 	    
 	    // Get our predicate
-		@SuppressWarnings("unchecked")
 	    Predicate<ItemStack> predicate = args.<Predicate<ItemStack>>get(0);
 	    
 	    for(ItemStack item : player.getInventory()) {

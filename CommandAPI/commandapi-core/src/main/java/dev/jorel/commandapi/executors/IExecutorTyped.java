@@ -2,6 +2,7 @@ package dev.jorel.commandapi.executors;
 
 import org.bukkit.command.CommandSender;
 
+import dev.jorel.commandapi.Arguments;
 import dev.jorel.commandapi.exceptions.WrapperCommandSyntaxException;
 
 /**
@@ -26,6 +27,6 @@ public interface IExecutorTyped {
 	 * @return the value returned by this command if the command succeeds, 0 if the command fails
 	 * @throws WrapperCommandSyntaxException if an error occurs during the execution of this command
 	 */
-	int executeWith(CommandSender sender, Object[] args) throws WrapperCommandSyntaxException;
+	int executeWith(CommandSender sender, Arguments args) throws WrapperCommandSyntaxException;
 
 }

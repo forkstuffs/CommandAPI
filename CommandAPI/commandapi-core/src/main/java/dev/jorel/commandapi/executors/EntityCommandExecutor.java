@@ -2,6 +2,7 @@ package dev.jorel.commandapi.executors;
 
 import org.bukkit.entity.Entity;
 
+import dev.jorel.commandapi.Arguments;
 import dev.jorel.commandapi.exceptions.WrapperCommandSyntaxException;
 
 /**
@@ -20,7 +21,7 @@ public interface EntityCommandExecutor extends IExecutorNormal<Entity> {
 	 *            determined by the hashmap of arguments IN THE ORDER of
 	 *            insertion into the hashmap
 	 */
-	void run(Entity sender, Object[] args) throws WrapperCommandSyntaxException;
+	void run(Entity sender, Arguments args) throws WrapperCommandSyntaxException;
 
 	@Override
 	default ExecutorType getType() {

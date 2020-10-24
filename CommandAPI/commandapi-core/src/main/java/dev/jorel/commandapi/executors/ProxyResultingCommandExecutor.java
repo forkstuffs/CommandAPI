@@ -1,5 +1,6 @@
 package dev.jorel.commandapi.executors;
 
+import dev.jorel.commandapi.Arguments;
 import dev.jorel.commandapi.exceptions.WrapperCommandSyntaxException;
 import dev.jorel.commandapi.wrappers.NativeProxyCommandSender;
 
@@ -20,7 +21,7 @@ public interface ProxyResultingCommandExecutor extends IExecutorResulting<Native
 	 *            insertion into the hashmap
 	 * @return the result of this command
 	 */
-	int run(NativeProxyCommandSender sender, Object[] args) throws WrapperCommandSyntaxException;
+	int run(NativeProxyCommandSender sender, Arguments args) throws WrapperCommandSyntaxException;
 
 	@Override
 	default ExecutorType getType() {

@@ -2,6 +2,7 @@ package dev.jorel.commandapi.executors;
 
 import org.bukkit.command.CommandSender;
 
+import dev.jorel.commandapi.Arguments;
 import dev.jorel.commandapi.exceptions.WrapperCommandSyntaxException;
 
 /**
@@ -20,7 +21,7 @@ public interface CommandExecutor extends IExecutorNormal<CommandSender> {
 	 *            determined by the hashmap of arguments IN THE ORDER of
 	 *            insertion into the hashmap
 	 */
-	void run(CommandSender sender, Object[] args) throws WrapperCommandSyntaxException;
+	void run(CommandSender sender, Arguments args) throws WrapperCommandSyntaxException;
 
 	@Override
 	default ExecutorType getType() {

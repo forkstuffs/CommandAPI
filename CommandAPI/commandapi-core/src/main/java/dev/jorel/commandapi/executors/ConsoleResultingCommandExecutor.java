@@ -2,6 +2,7 @@ package dev.jorel.commandapi.executors;
 
 import org.bukkit.command.ConsoleCommandSender;
 
+import dev.jorel.commandapi.Arguments;
 import dev.jorel.commandapi.exceptions.WrapperCommandSyntaxException;
 
 /**
@@ -21,7 +22,7 @@ public interface ConsoleResultingCommandExecutor extends IExecutorResulting<Cons
 	 *            insertion into the hashmap
 	 * @return the result of this command
 	 */
-	int run(ConsoleCommandSender sender, Object[] args) throws WrapperCommandSyntaxException;
+	int run(ConsoleCommandSender sender, Arguments args) throws WrapperCommandSyntaxException;
 
 	@Override
 	default ExecutorType getType() {

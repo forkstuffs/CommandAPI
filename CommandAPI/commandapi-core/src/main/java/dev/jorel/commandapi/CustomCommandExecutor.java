@@ -55,7 +55,7 @@ class CustomCommandExecutor {
 		return matches(normalExecutors, ExecutorType.NATIVE) || matches(resultingExecutors, ExecutorType.NATIVE);
 	}
 	
-	public int execute(CommandSender sender, Object[] arguments) throws CommandSyntaxException {
+	public int execute(CommandSender sender, Arguments arguments) throws CommandSyntaxException {
 		
 		//Parse executor type
         if (!resultingExecutors.isEmpty()) {
@@ -81,7 +81,7 @@ class CustomCommandExecutor {
         }
 	}
 	
-	private int execute(List<? extends IExecutorTyped> executors, CommandSender sender, Object[] args, ExecutorType type) throws WrapperCommandSyntaxException {
+	private int execute(List<? extends IExecutorTyped> executors, CommandSender sender, Arguments args, ExecutorType type) throws WrapperCommandSyntaxException {
 		return executors.stream().filter(o -> o.getType() == type).findFirst().get().executeWith(sender, args);
 	}
 	
@@ -89,7 +89,7 @@ class CustomCommandExecutor {
 		return executors.stream().map(IExecutorTyped::getType).anyMatch(type::equals);
 	}
 	
-	private int execute(List<? extends IExecutorTyped> executors, CommandSender sender, Object[] args) throws WrapperCommandSyntaxException {
+	private int execute(List<? extends IExecutorTyped> executors, CommandSender sender, Arguments args) throws WrapperCommandSyntaxException {
 		if(isForceNative()) {
 			return execute(executors, sender, args, ExecutorType.NATIVE);
 		} else if (sender instanceof Player && matches(executors, ExecutorType.PLAYER)) {

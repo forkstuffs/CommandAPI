@@ -57,6 +57,7 @@ import com.mojang.brigadier.builder.ArgumentBuilder;
 import com.mojang.brigadier.tree.LiteralCommandNode;
 
 import de.tr7zw.nbtapi.NBTContainer;
+import dev.jorel.commandapi.Arguments;
 import dev.jorel.commandapi.Brigadier;
 import dev.jorel.commandapi.CommandAPI;
 import dev.jorel.commandapi.CommandAPICommand;
@@ -145,7 +146,7 @@ new CommandAPICommand("editconfig")
     .withArguments(arguments)
     .executes((sender, args) -> {
         // Update the config with the boolean argument
-        getConfig().set((String) args[0], (boolean) args[1]);
+        getConfig().set(args.<String>get(0), args.<Boolean>get(1));
     })
     .register();
 }
@@ -162,8 +163,8 @@ new CommandAPICommand("searchrange")
     .withArguments(arguments)
     .executesPlayer((player, args) -> {
         // Retrieve the range from the arguments
-        IntegerRange range = (IntegerRange) args[0];
-        ItemStack itemStack = (ItemStack) args[1];
+        IntegerRange range = args.<IntegerRange>get("range");
+        ItemStack itemStack = args.<ItemStack>get("item");
 
         // Store the locations of chests with certain items
         List<Location> locations = new ArrayList<>();
@@ -218,7 +219,7 @@ arguments.add(new GreedyStringArgument("message"));
 new CommandAPICommand("message")
     .withArguments(arguments)
     .executes((sender, args) -> {
-        ((Player) args[0]).sendMessage((String) args[1]);
+        args.<Player>get(0).sendMessage(args.<String>get(1));
     })
     .register();
 /* ANCHOR_END: greedystringarguments */
@@ -230,7 +231,7 @@ new CommandAPICommand("break")
     //We want to target blocks in particular, so use BLOCK_POSITION
     .withArguments(new LocationArgument("block", LocationType.BLOCK_POSITION))
     .executesPlayer((player, args) -> {
-        ((Location) args[0]).getBlock().setType(Material.AIR);
+        args.<Location>get(0).getBlock().setType(Material.AIR);
     })
     .register();
 /* ANCHOR_END: locationarguments */
@@ -242,8 +243,8 @@ new CommandAPICommand("rotate")
     .withArguments(new RotationArgument("rotation"))
     .withArguments(new EntitySelectorArgument("target", EntitySelector.ONE_ENTITY))
     .executes((sender, args) -> {
-        Rotation rotation = (Rotation) args[0];
-        Entity target = (Entity) args[1];
+        Rotation rotation = args.<Rotation>get(0);
+        Entity target = args.<Entity>get(1);
 
         if(target instanceof ArmorStand) {
             ArmorStand a = (ArmorStand) target;
@@ -259,7 +260,7 @@ new CommandAPICommand("rotate")
 new CommandAPICommand("namecolor")
     .withArguments(new ChatColorArgument("chatcolor"))
     .executesPlayer((player, args) -> {
-        ChatColor color = (ChatColor) args[0];
+        ChatColor color = args.<ChatColor>get(0);
         player.setDisplayName(color + player.getName());
     })
     .register();
@@ -272,8 +273,8 @@ new CommandAPICommand("makebook")
     .withArguments(new PlayerArgument("player"))
     .withArguments(new ChatComponentArgument("contents"))
     .executes((sender, args) -> {
-        Player player = (Player) args[0];
-        BaseComponent[] arr = (BaseComponent[]) args[1];
+        Player player = args.<Player>get(0);
+        BaseComponent[] arr = args.<BaseComponent[]>get(1);
         
         //Create book
         ItemStack is = new ItemStack(Material.WRITTEN_BOOK);
@@ -295,7 +296,7 @@ new CommandAPICommand("makebook")
 new CommandAPICommand("pbroadcast")
     .withArguments(new ChatArgument("message"))
     .executes((sender, args) -> {
-        BaseComponent[] message = (BaseComponent[]) args[0];
+        BaseComponent[] message = args.<BaseComponent[]>get(0);
     
         //Broadcast the message to everyone on the server
         Bukkit.getServer().spigot().broadcast(message);
@@ -312,7 +313,7 @@ new CommandAPICommand("remove")
     .executes((sender, args) -> {
         //Parse the argument as a collection of entities (as stated above in the documentation)
         @SuppressWarnings("unchecked")
-        Collection<Entity> entities = (Collection<Entity>) args[0];
+        Collection<Entity> entities = args.<Collection<Entity>>get(0);
         
         sender.sendMessage("Removed " + entities.size() + " entities");
         for(Entity e : entities) {
@@ -328,9 +329,9 @@ new CommandAPICommand("remove")
 new CommandAPICommand("spawnmob")
     .withArguments(new EntityTypeArgument("entity"))
     .withArguments(new IntegerArgument("amount", 1, 100)) //Prevent spawning too many entities
-    .executesPlayer((Player player, Object[] args) -> {
-        for(int i = 0; i < (int) args[1]; i++) {
-            player.getWorld().spawnEntity(player.getLocation(), (EntityType) args[0]);
+    .executesPlayer((Player player, Arguments args) -> {
+    	for(int i = 0; i < args.<Integer>get(1); i++) {
+    		player.getWorld().spawnEntity(player.getLocation(), args.<EntityType>get(0));
         }
     })
     .register();
@@ -345,7 +346,7 @@ new CommandAPICommand("reward")
     .executes((sender, args) -> {
         //Get player names by casting to Collection<String>
         @SuppressWarnings("unchecked")
-        Collection<String> players = (Collection<String>) args[0];
+        Collection<String> players = args.<Collection<String>>get(0);
         
         for(String playerName : players) {
             Bukkit.getPlayer(playerName).getInventory().addItem(new ItemStack(Material.DIAMOND, 3));
@@ -361,7 +362,7 @@ new CommandAPICommand("clearobjectives")
     .withArguments(new ScoreboardSlotArgument("slot"))
     .executes((sender, args) -> {
         Scoreboard scoreboard = Bukkit.getScoreboardManager().getMainScoreboard();
-        DisplaySlot slot = ((ScoreboardSlot) args[0]).getDisplaySlot();
+        DisplaySlot slot = args.<ScoreboardSlot>get(0).getDisplaySlot();
         scoreboard.clearSlot(slot);
     })
     .register();
@@ -374,7 +375,7 @@ new CommandAPICommand("sidebar")
     .withArguments(new ObjectiveArgument("objective"))
     .executes((sender, args) -> {
         //The ObjectArgument must be casted to a String
-        String objectiveName = (String) args[0];
+        String objectiveName = args.<String>get(0);
         
         //An objective name can be turned into an Objective using getObjective(String)
         Objective objective = Bukkit.getScoreboardManager().getMainScoreboard().getObjective(objectiveName);
@@ -391,7 +392,7 @@ new CommandAPICommand("sidebar")
 new CommandAPICommand("unregisterall")
     .withArguments(new ObjectiveCriteriaArgument("objective criteria"))
     .executes((sender, args) -> {
-        String objectiveCriteria = (String) args[0];
+        String objectiveCriteria = args.<String>get(0);
         Set<Objective> objectives = Bukkit.getScoreboardManager().getMainScoreboard().getObjectivesByCriteria(objectiveCriteria);
         
         //Unregister the objectives
@@ -409,7 +410,7 @@ new CommandAPICommand("togglepvp")
     .withArguments(new TeamArgument("team"))
     .executes((sender, args) -> {
         //The TeamArgument must be casted to a String
-        String teamName = (String) args[0];
+        String teamName = args.<String>get(0);
         
         //A team name can be turned into a Team using getTeam(String)
         Team team = Bukkit.getScoreboardManager().getMainScoreboard().getTeam(teamName);
@@ -427,8 +428,8 @@ new CommandAPICommand("award")
     .withArguments(new PlayerArgument("player"))
     .withArguments(new AdvancementArgument("advancement"))
     .executes((sender, args) -> {
-        Player target = (Player) args[0];
-        Advancement advancement = (Advancement) args[1];
+        Player target = args.<Player>get(0);
+        Advancement advancement = args.<Advancement>get(1);
         
         //Award all criteria for the advancement
         AdvancementProgress progress = target.getAdvancementProgress(advancement);
@@ -445,7 +446,7 @@ new CommandAPICommand("award")
 new CommandAPICommand("setbiome")
 	.withArguments(new BiomeArgument("biome"))
 	.executesPlayer((player, args) -> {
-		Biome biome = (Biome) args[0];
+		Biome biome = args.<Biome>get(0);
 
 		Chunk chunk = player.getLocation().getChunk();
 		player.getWorld().setBiome(chunk.getX(), player.getLocation().getBlockY(), chunk.getZ(), biome);
@@ -459,7 +460,7 @@ new CommandAPICommand("setbiome")
 new CommandAPICommand("set")
     .withArguments(new BlockStateArgument("block"))
     .executesPlayer((player, args) -> {
-        BlockData blockdata = (BlockData) args[0];
+        BlockData blockdata = args.<BlockData>get(0);
         Block targetBlock = player.getTargetBlockExact(256);
         
         // Set the block, along with its data
@@ -476,8 +477,8 @@ new CommandAPICommand("enchantitem")
     .withArguments(new EnchantmentArgument("enchantment"))
     .withArguments(new IntegerArgument("level", 1, 5))
     .executesPlayer((player, args) -> {
-        Enchantment enchantment = (Enchantment) args[0];
-        int level = (int) args[1];
+        Enchantment enchantment = args.<Enchantment>get(0);
+        int level = args.<Integer>get(1);
         
         //Add the enchantment
         player.getInventory().getItemInMainHand().addEnchantment(enchantment, level);
@@ -492,8 +493,8 @@ new CommandAPICommand("createworld")
     .withArguments(new StringArgument("worldname"))
     .withArguments(new EnvironmentArgument("type"))
     .executes((sender, args) -> {
-        String worldName = (String) args[0];
-        Environment environment = (Environment) args[1];
+        String worldName = args.<String>get(0);
+        Environment environment = args.<Environment>get(1);
 
         // Create a new world with the specific world name and environment
         Bukkit.getServer().createWorld(new WorldCreator(worldName).environment(environment));
@@ -508,7 +509,7 @@ new CommandAPICommand("createworld")
 new CommandAPICommand("item")
     .withArguments(new ItemStackArgument("itemstack"))
     .executesPlayer((player, args) -> {
-        player.getInventory().addItem((ItemStack) args[0]);
+        player.getInventory().addItem(args.<ItemStack>get(0));
     })
     .register();
 /* ANCHOR_END: itemstackarguments */
@@ -519,7 +520,7 @@ new CommandAPICommand("item")
 new CommandAPICommand("giveloottable")
     .withArguments(new LootTableArgument("loottable"))
     .executesPlayer((player, args) -> {
-        LootTable lootTable = (LootTable) args[0];
+        LootTable lootTable = args.<LootTable>get(0);
     
         /* Some generated LootContext relating to the lootTable*/
     	LootContext context = new LootContext.Builder(player.getLocation()).build();
@@ -537,9 +538,9 @@ new CommandAPICommand("changelevel")
     .withArguments(new MathOperationArgument("operation"))
     .withArguments(new IntegerArgument("value"))
     .executes((sender, args) -> {
-        Player target = (Player) args[0];
-        MathOperation op = (MathOperation) args[1];
-        int value = (int) args[2];
+        Player target = args.<Player>get(0);
+        MathOperation op = args.<MathOperation>get(1);
+        int value = args.<Integer>get(2);
 
         target.setLevel(op.apply(target.getLevel(), value));
     })
@@ -552,7 +553,7 @@ new CommandAPICommand("changelevel")
 new CommandAPICommand("showparticle")
     .withArguments(new ParticleArgument("particle"))
     .executesPlayer((player, args) -> {
-        player.getWorld().spawnParticle((Particle) args[0], player.getLocation(), 1);
+    	player.getWorld().spawnParticle(args.<Particle>get(0), player.getLocation(), 1);
     })
     .register();
 /* ANCHOR_END: particlearguments */
@@ -566,10 +567,10 @@ new CommandAPICommand("potion")
     .withArguments(new TimeArgument("duration"))
     .withArguments(new IntegerArgument("strength"))
     .executes((sender, args) -> {
-        Player target = (Player) args[0];
-        PotionEffectType potion = (PotionEffectType) args[1];
-        int duration = (int) args[2];
-        int strength = (int) args[3];
+        Player target = args.<Player>get(0);
+        PotionEffectType potion = args.<PotionEffectType>get(1);
+        int duration = args.<Integer>get(2);
+        int strength = args.<Integer>get(3);
         
         //Add the potion effect to the target player
         target.addPotionEffect(new PotionEffect(potion, duration, strength));
@@ -583,7 +584,7 @@ new CommandAPICommand("potion")
 new CommandAPICommand("giverecipe")
     .withArguments(new RecipeArgument("recipe"))
     .executesPlayer((player, args) -> {
-        Recipe recipe = (Recipe) args[0];
+        Recipe recipe = args.<Recipe>get(0);
     	player.getInventory().addItem(recipe.getResult());
     })
     .register();
@@ -596,8 +597,8 @@ new CommandAPICommand("unlockrecipe")
     .withArguments(new PlayerArgument("player"))
     .withArguments(new RecipeArgument("recipe"))
     .executes((sender, args) -> {
-        Player target = (Player) args[0];
-        Recipe recipe = (Recipe) args[1];
+        Player target = args.<Player>get(0);
+        Recipe recipe = args.<Recipe>get(1);
 		
         //Check if we're running 1.15+
         if(recipe instanceof ComplexRecipe) {
@@ -617,7 +618,7 @@ new CommandAPICommand("unlockrecipe")
 new CommandAPICommand("sound")
     .withArguments(new SoundArgument("sound"))
     .executesPlayer((player, args) -> {
-        player.getWorld().playSound(player.getLocation(), (Sound) args[0], 100.0f, 1.0f);
+    	player.getWorld().playSound(player.getLocation(), args.<Sound>get(0), 100.0f, 1.0f);
     })
     .register();
 /* ANCHOR_END: soundarguments */
@@ -630,8 +631,8 @@ new CommandAPICommand("bigmsg")
     .withArguments(new GreedyStringArgument("message"))
     .executes((sender, args) -> {
         //Duration in ticks
-        int duration = (int) args[0];
-        String message = (String) args[1];
+        int duration = args.<Integer>get(0);
+        String message = args.<String>get(1);
 
         for(Player player : Bukkit.getOnlinePlayers()) {
             //Display the message to all players, with the default fade in/out times (10 and 20).
@@ -657,10 +658,10 @@ new CommandAPICommand("replace")
 	.executesPlayer((player, args) -> {
 	    
 	    // Parse the arguments
-	    int radius = (int) args[0];
+	    int radius = args.<Integer>get(0);
 	    @SuppressWarnings("unchecked")
-	    Predicate<Block> predicate = (Predicate<Block>) args[1];
-	    BlockData blockData = (BlockData) args[2];
+	    Predicate<Block> predicate = args.<Predicate<Block>>get(1);
+	    BlockData blockData = args.<BlockData>get(2);
 	    
 	    // Find a (solid) sphere of blocks around the player with a given radius
 	    Location center = player.getLocation();
@@ -694,7 +695,7 @@ new CommandAPICommand("rem")
 	    
 	    // Get our predicate
 		@SuppressWarnings("unchecked")
-	    Predicate<ItemStack> predicate = (Predicate<ItemStack>) args[0];
+	    Predicate<ItemStack> predicate = args.<Predicate<ItemStack>>get(0);
 	    
 	    for(ItemStack item : player.getInventory()) {
 	        if(predicate.test(item)) {
@@ -712,7 +713,7 @@ void b(){
 new CommandAPICommand("award")
     .withArguments(new NBTCompoundArgument("nbt"))
     .executes((sender, args) -> {
-        NBTContainer nbt = (NBTContainer) args[0];
+        NBTContainer nbt = args.<NBTContainer>get(0);
         
         //Do something with "nbt" here...
     })
@@ -728,7 +729,7 @@ new CommandAPICommand("mycommand")
     .withArguments(new TextArgument("text"))
     .executes((sender, args) -> {
         // This gives the variable "text" the contents of the TextArgument, and not the literal "hello"
-        String text = (String) args[0];
+        String text = args.<String>get(0);
     })
     .register();
 /* ANCHOR_END: literalarguments */
@@ -764,7 +765,7 @@ new CommandAPICommand("gamemode")
     .withArguments(new MultiLiteralArgument("adventure", "creative", "spectator", "survival"))
     .executesPlayer((player, args) -> {
         // The literal string that the player enters IS available in the args[]
-        switch((String) args[0]) {
+        switch(args.<String>get(0)) {
             case "adventure":
                 player.setGameMode(GameMode.ADVENTURE);
                 break;
@@ -788,7 +789,7 @@ new CommandAPICommand("gamemode")
 new CommandAPICommand("tpworld")
     .withArguments(worldArgument("world"))
     .executesPlayer((player, args) -> {
-        player.teleport(((World) args[0]).getSpawnLocation());
+        player.teleport((args.<World>get(0)).getSpawnLocation());
     })
     .register();
 /* ANCHOR_END: customarguments */
@@ -820,7 +821,7 @@ public Argument worldArgument(String nodeName) {
 new CommandAPICommand("runfunc")
     .withArguments(new FunctionArgument("function"))
 	.executes((sender, args) -> {
-        FunctionWrapper[] functions = (FunctionWrapper[]) args[0];
+        FunctionWrapper[] functions = args.<FunctionWrapper[]>get(0);
         for(FunctionWrapper function : functions) {
             function.run(); // The command executor in this case is 'sender'
         }
@@ -834,7 +835,7 @@ new CommandAPICommand("runfunc")
 new CommandAPICommand("runfunction")
     .withArguments(new FunctionArgument("function"))
     .executes((sender, args) -> {
-        FunctionWrapper[] functions = (FunctionWrapper[]) args[0];
+        FunctionWrapper[] functions = args.<FunctionWrapper[]>get(0);
 
         //Run all functions in our FunctionWrapper[]
         for(FunctionWrapper function : functions) {
@@ -884,7 +885,7 @@ new CommandAPICommand("kill")
 new CommandAPICommand("kill")
     .withArguments(new PlayerArgument("target").withPermission(CommandPermission.OP))
     .executesPlayer((player, args) -> {
-        ((Player) args[0]).setHealth(0);
+        args.<Player>get(0).setHealth(0);
     })
     .register();
 /* ANCHOR_END: permissions3 */
@@ -949,7 +950,7 @@ new CommandAPICommand("broadcastmsg")
     .withAliases("broadcast", "broadcastmessage")       // Command aliases
     .withPermission(CommandPermission.OP)               // Required permissions
     .executes((sender, args) -> {
-        String message = (String) args[0];
+        String message = args.<String>get(0);
         Bukkit.getServer().broadcastMessage(message);
     })
     .register();
@@ -1025,7 +1026,7 @@ new CommandAPICommand("randomnumber")
 new CommandAPICommand("givereward")
     .withArguments(new EntitySelectorArgument("target", EntitySelector.ONE_PLAYER))
     .executes((sender, args) -> {
-        Player player = (Player) args[0];
+        Player player = args.<Player>get(0);
         player.getInventory().addItem(new ItemStack(Material.DIAMOND, 64));
         Bukkit.broadcastMessage(player.getName() + " won a rare 64 diamonds from a loot box!");
     })
@@ -1046,7 +1047,7 @@ arguments.add(new StringArgument("item").overrideSuggestions(fruit));
 new CommandAPICommand("getfruit")
     .withArguments(arguments)
     .executes((sender, args) -> {
-        String inputFruit = (String) args[0];
+        String inputFruit = args.<String>get(0);
         
         if(Arrays.stream(fruit).anyMatch(inputFruit::equals)) {
             //Do something with inputFruit
@@ -1105,7 +1106,7 @@ new CommandAPICommand("party")
 	.executesPlayer((player, args) -> {
 		
 		//Get the name of the party to create
-		String partyName = (String) args[0];
+		String partyName = args.<String>get(0);
 		
 		partyMembers.put(player.getUniqueId(), partyName);
 	})
@@ -1157,7 +1158,7 @@ arguments.add(new PlayerArgument("player")
 new CommandAPICommand("party")
 	.withArguments(arguments)
 	.executesPlayer((player, args) -> {
-		Player target = (Player) args[0];
+		Player target = args.<Player>get(0);
 		player.teleport(target);
 	})
 	.register();
@@ -1169,7 +1170,7 @@ new CommandAPICommand("party")
 	.executesPlayer((player, args) -> {
 		
 		//Get the name of the party to create
-		String partyName = (String) args[0];
+		String partyName = args.<String>get(0);
 		
 		partyMembers.put(player.getUniqueId(), partyName);
 	    
@@ -1261,8 +1262,8 @@ ArgumentBuilder denominator = Brigadier.fromArgument(arguments, "denominator")
     //Fork redirecting to "execute" and state our predicate
     .fork(Brigadier.getRootNode().getChild("execute"), Brigadier.fromPredicate((sender, args) -> {
         //Parse arguments like normal
-        int num = (int) args[0];
-        int denom = (int) args[1];
+        int num = args.<Integer>get(0);
+        int denom = args.<Integer>get(1);
         
         //Return boolean with a num/denom chance
         return Math.ceil(Math.random() * (double) denom) <= (double) num;
@@ -1353,7 +1354,7 @@ new CommandAPICommand("yaw")
 	.withArguments(new AngleArgument("amount"))
 	.executesPlayer((player, args) -> {
 		Location newLocation = player.getLocation();
-		newLocation.setYaw((float) args[0]);
+		newLocation.setYaw(args.<Float>get(0));
 		player.teleport(newLocation);
 	})
 	.register();
@@ -1368,8 +1369,8 @@ new CommandAPICommand("mycommand")
     .withArguments(new GreedyStringArgument("message"))
     .executes((sender, args) -> {
     	// args == [player, message]
-    	Player player = (Player) args[0];
-    	String message = (String) args[1]; //Note that this is args[1] and NOT args[2]
+    	Player player = args.<Player>get(0);
+    	String message = args.<String>get(1); //Note that this is get(1) and NOT get(2)
         player.sendMessage(message);
     })
     .register();
@@ -1392,8 +1393,8 @@ arguments.add(new PlayerArgument("target"));
 new CommandAPICommand("emote")
 	.withArguments(arguments)
 	.executesPlayer((player, args) -> {
-		String emote = (String) args[0];
-		Player target = (Player) args[1];
+		String emote = args.<String>get(0);
+		Player target = args.<Player>get(1);
 		
 		switch(emote) {
 		case "wave":
@@ -1421,7 +1422,7 @@ CustomItem[] customItems = new CustomItem[] {
 new CommandAPICommand("giveitem")
 	.withArguments(new StringArgument("item").overrideSuggestionsT(customItems)) // We use customItems[] as the input for our suggestions with tooltips
 	.executesPlayer((player, args) -> {
-		String itemName = (String) args[0];
+		String itemName = args.<String>get(0);
 		
 		//Give them the item
 		for(CustomItem item : customItems) {
@@ -1450,7 +1451,7 @@ arguments.add(new LocationArgument("location")
 new CommandAPICommand("warp")
 	.withArguments(arguments)
 	.executesPlayer((player, args) -> {
-	    player.teleport((Location) args[0]);
+	    player.teleport(args.<Location>get(0));
 	})
 	.register();
 /* ANCHOR_END: SafeTooltips2 */

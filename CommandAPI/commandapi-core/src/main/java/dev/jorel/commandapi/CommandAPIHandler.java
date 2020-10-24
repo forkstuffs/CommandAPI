@@ -173,12 +173,12 @@ public class CommandAPIHandler<CommandListenerWrapper> {
 		// Generate our command from executor
 		return (cmdCtx) -> {
 			CommandSender sender = NMS.getSenderForCommand(cmdCtx, executor.isForceNative());
-			Object[] arguments;
+			Arguments arguments;
 			if(converted) {
 				String[] argsAndCmd = cmdCtx.getRange().get(cmdCtx.getInput()).split(" ");
 				String[] result = new String[argsAndCmd.length - 1];
 				System.arraycopy(argsAndCmd, 1, result, 0, argsAndCmd.length - 1);
-				arguments = result;
+				arguments = new Arguments(result);
 			} else {
 				arguments = argsToObjectArr(cmdCtx, args);
 			}
@@ -188,24 +188,23 @@ public class CommandAPIHandler<CommandListenerWrapper> {
 	
 	/**
 	 * Converts the List&lt;Argument> into an Object[] for command execution
-	 * @param cmdCtx the command context that will execute this command
-	 * @param args the map of strings to arguments
-	 * @return an Object[] which can be used in (sender, args) -> 
-	 * @throws CommandSyntaxException
+	 * TODO: This needs rewriting
 	 */
-	Object[] argsToObjectArr(CommandContext<CommandListenerWrapper> cmdCtx, List<Argument> args) throws CommandSyntaxException {
+	Arguments argsToObjectArr(CommandContext<CommandListenerWrapper> cmdCtx, List<Argument> args) throws CommandSyntaxException {
 		// Array for arguments for executor
 		List<Object> argList = new ArrayList<>();
+		List<String> argNodeNames = new ArrayList<>();
 
 		// Populate array
 		for (Argument argument : args) {
 			Object result = parseArgument(cmdCtx, argument.getNodeName(), argument);
 			if(result != null) {
 				argList.add(result);
+				argNodeNames.add(argument.getNodeName());
 			}
 		}
 		
-		return argList.toArray();
+		return new Arguments(argNodeNames, argList);
 	}
 	
 	/**
@@ -654,8 +653,7 @@ public class CommandAPIHandler<CommandListenerWrapper> {
 			return builder.requires(clw -> permissionCheck(NMS.getCommandSenderForCLW(clw), argument.getArgumentPermission(), argument.getRequirements()));
 		}
 
-		// Otherwise, we have to handle arguments of the form BiFunction<CommandSender,
-		// Object[], String[]>
+		// Otherwise, we have to handle arguments of the form BiFunction<CommandSender, Object[], String[]>
 		else {
 			return getRequiredArgumentBuilderWithProvider(argument, toSuggestions(argument.getNodeName(), args));
 		}

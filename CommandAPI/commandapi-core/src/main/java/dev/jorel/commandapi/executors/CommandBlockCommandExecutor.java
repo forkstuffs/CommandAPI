@@ -2,6 +2,7 @@ package dev.jorel.commandapi.executors;
 
 import org.bukkit.command.BlockCommandSender;
 
+import dev.jorel.commandapi.Arguments;
 import dev.jorel.commandapi.exceptions.WrapperCommandSyntaxException;
 
 /**
@@ -15,12 +16,8 @@ public interface CommandBlockCommandExecutor extends IExecutorNormal<BlockComman
 	 * 
 	 * @param sender
 	 *            The sender of this command (a player, the console etc.)
-	 * @param args
-	 *            The arguments given to this command. The objects are
-	 *            determined by the hashmap of arguments IN THE ORDER of
-	 *            insertion into the hashmap
 	 */
-	void run(BlockCommandSender sender, Object[] args) throws WrapperCommandSyntaxException;
+	void run(BlockCommandSender sender, Arguments args) throws WrapperCommandSyntaxException;
 
 	@Override
 	default ExecutorType getType() {

@@ -8,6 +8,7 @@ import org.bukkit.command.CommandSender;
 import com.mojang.brigadier.LiteralMessage;
 import com.mojang.brigadier.exceptions.SimpleCommandExceptionType;
 
+import dev.jorel.commandapi.Arguments;
 import dev.jorel.commandapi.exceptions.WrapperCommandSyntaxException;
 
 /**
@@ -25,7 +26,7 @@ public interface IExecutorResulting<T extends CommandSender> extends IExecutorTy
 	 */
 	@SuppressWarnings("unchecked")
 	@Override
-	default int executeWith(CommandSender sender, Object[] args) throws WrapperCommandSyntaxException {
+	default int executeWith(CommandSender sender, Arguments args) throws WrapperCommandSyntaxException {
 		Method runMethod = Arrays.stream(this.getClass().getDeclaredMethods()).filter(m -> m.getName().equals("run")).findFirst().get();
 		Class<?> type = runMethod.getParameterTypes()[0];
 		if(type.isInstance(sender)) {
@@ -46,6 +47,6 @@ public interface IExecutorResulting<T extends CommandSender> extends IExecutorTy
 	 * @return the value returned by this command
 	 * @throws WrapperCommandSyntaxException if an error occurs during the execution of this command
 	 */
-	int run(T sender, Object[] args) throws WrapperCommandSyntaxException;
+	int run(T sender, Arguments args) throws WrapperCommandSyntaxException;
 	
 }

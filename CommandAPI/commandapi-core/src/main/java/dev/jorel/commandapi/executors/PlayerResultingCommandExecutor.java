@@ -2,6 +2,7 @@ package dev.jorel.commandapi.executors;
 
 import org.bukkit.entity.Player;
 
+import dev.jorel.commandapi.Arguments;
 import dev.jorel.commandapi.exceptions.WrapperCommandSyntaxException;
 
 /**
@@ -21,7 +22,7 @@ public interface PlayerResultingCommandExecutor extends IExecutorResulting<Playe
 	 *            insertion into the hashmap
 	 * @return the result of this command
 	 */
-	int run(Player sender, Object[] args) throws WrapperCommandSyntaxException;
+	int run(Player sender, Arguments args) throws WrapperCommandSyntaxException;
 
 	@Override
 	default ExecutorType getType() {

@@ -79,7 +79,7 @@ public abstract class Brigadier {
 	 * @param args      the arguments that the sender has filled in
 	 * @return a RedirectModifier that encapsulates the provided predicate
 	 */
-	public static RedirectModifier fromPredicate(BiPredicate<CommandSender, Object[]> predicate, List<Argument> args) {
+	public static RedirectModifier fromPredicate(BiPredicate<CommandSender, Arguments> predicate, List<Argument> args) {
 		return cmdCtx -> {
 			if (predicate.test(CommandAPIHandler.getInstance().NMS.getSenderForCommand(cmdCtx, false),
 					CommandAPIHandler.getInstance().argsToObjectArr(cmdCtx, args))) {

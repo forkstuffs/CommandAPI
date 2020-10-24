@@ -2,6 +2,7 @@ package dev.jorel.commandapi.executors;
 
 import org.bukkit.command.BlockCommandSender;
 
+import dev.jorel.commandapi.Arguments;
 import dev.jorel.commandapi.exceptions.WrapperCommandSyntaxException;
 
 /**
@@ -22,7 +23,7 @@ public interface CommandBlockResultingCommandExecutor extends IExecutorResulting
 	 *            
 	 * @return the result of this command
 	 */
-	int run(BlockCommandSender sender, Object[] args) throws WrapperCommandSyntaxException;
+	int run(BlockCommandSender sender, Arguments args) throws WrapperCommandSyntaxException;
 
 	@Override
 	default ExecutorType getType() {

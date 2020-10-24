@@ -2,6 +2,7 @@ package dev.jorel.commandapi;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 public class Arguments {
 	
@@ -31,6 +32,14 @@ public class Arguments {
 	@SuppressWarnings("unchecked")
 	public <T> T get(int index) {
 		return (T) arguments.get(index);
+	}
+	
+	public <T> Optional<T> getOptional(String name) {
+		return Optional.ofNullable(get(name));
+	}
+	
+	public <T> Optional<T> getOptional(int index) {
+		return Optional.ofNullable(get(index));
 	}
 	
 }

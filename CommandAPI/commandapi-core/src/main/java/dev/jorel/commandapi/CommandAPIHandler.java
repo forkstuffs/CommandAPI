@@ -677,6 +677,7 @@ public class CommandAPIHandler<CommandListenerWrapper> {
 		return (CommandContext<CommandListenerWrapper> context, SuggestionsBuilder builder) -> {
 			// Populate Object[], which is our previously filled arguments
 			List<Object> previousArguments = new ArrayList<>();
+			List<String> argumentNames = new ArrayList<>();
 
 			for (Argument arg : args) {
 				if (arg.getNodeName().equals(nodeName)) {
@@ -699,12 +700,13 @@ public class CommandAPIHandler<CommandListenerWrapper> {
 				}
 				if(result != null) {
 					previousArguments.add(result);
+					argumentNames.add(arg.getNodeName());
 				}
 			}
 			return getSuggestionsBuilder(builder,
 					getArgument(args, nodeName).getOverriddenSuggestions()
 							.orElseGet(() -> (c, m) -> new IStringTooltip[0])
-							.apply(NMS.getCommandSenderForCLW(context.getSource()), previousArguments.toArray()));
+							.apply(NMS.getCommandSenderForCLW(context.getSource()), new Arguments(argumentNames, previousArguments)));
 		};
 	}
 

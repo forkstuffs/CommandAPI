@@ -11,6 +11,7 @@ import org.bukkit.command.CommandSender;
 
 import com.mojang.brigadier.arguments.ArgumentType;
 
+import dev.jorel.commandapi.Arguments;
 import dev.jorel.commandapi.CommandPermission;
 import dev.jorel.commandapi.IStringTooltip;
 import dev.jorel.commandapi.StringTooltip;
@@ -74,7 +75,7 @@ public abstract class Argument implements IOverrideableSuggestions {
 	// Suggestions //
 	/////////////////
 
-	private Optional<BiFunction<CommandSender, Object[], IStringTooltip[]>> suggestions = Optional.empty();
+	private Optional<BiFunction<CommandSender, Arguments, IStringTooltip[]>> suggestions = Optional.empty();
 		
 	/**
 	 * Maps a String[] of suggestions to a StringTooltip[], using StringTooltip.none.
@@ -132,7 +133,7 @@ public abstract class Argument implements IOverrideableSuggestions {
 	 * @return the current argument
 	 */
 	@Override
-	public final Argument overrideSuggestions(BiFunction<CommandSender, Object[], String[]> suggestions) {
+	public final Argument overrideSuggestions(BiFunction<CommandSender, Arguments, String[]> suggestions) {
 		this.suggestions =  Optional.of((c, m) -> fromSuggestions(suggestions.apply(c, m)));
 		return this;
 	}
@@ -182,7 +183,7 @@ public abstract class Argument implements IOverrideableSuggestions {
 	 * @return the current argument
 	 */
 	@Override
-	public final Argument overrideSuggestionsT(BiFunction<CommandSender, Object[], IStringTooltip[]> suggestions) {
+	public final Argument overrideSuggestionsT(BiFunction<CommandSender, Arguments, IStringTooltip[]> suggestions) {
 		this.suggestions =  Optional.of(suggestions);
 		return this;
 	}
@@ -195,7 +196,7 @@ public abstract class Argument implements IOverrideableSuggestions {
 	 *         are no overridden suggestions.
 	 */
 	@Override
-	public final Optional<BiFunction<CommandSender, Object[], IStringTooltip[]>> getOverriddenSuggestions() {
+	public final Optional<BiFunction<CommandSender, Arguments, IStringTooltip[]>> getOverriddenSuggestions() {
 		return suggestions;
 	}
 

@@ -7,6 +7,7 @@ import java.util.function.Function;
 
 import org.bukkit.command.CommandSender;
 
+import dev.jorel.commandapi.Arguments;
 import dev.jorel.commandapi.IStringTooltip;
 
 /**
@@ -41,7 +42,7 @@ public interface IOverrideableSuggestions {
 	 * @param suggestions the function to override suggestions with
 	 * @return the current argument
 	 */
-	Argument overrideSuggestions(BiFunction<CommandSender, Object[], String[]> suggestions);
+	Argument overrideSuggestions(BiFunction<CommandSender, Arguments, String[]> suggestions);
 
 	/**
 	 * Returns a function that maps the command sender to a String array of
@@ -51,7 +52,7 @@ public interface IOverrideableSuggestions {
 	 * @return a function that provides suggestions, or <code>null</code> if there
 	 *         are no overridden suggestions.
 	 */
-	Optional<BiFunction<CommandSender, Object[], IStringTooltip[]>> getOverriddenSuggestions();
+	Optional<BiFunction<CommandSender, Arguments, IStringTooltip[]>> getOverriddenSuggestions();
 	
 	/**
 	 * Override the suggestions of this argument with an array of StringTooltips,
@@ -89,6 +90,6 @@ public interface IOverrideableSuggestions {
 	 * @param suggestions the suggestions and tooltips to override suggestions with
 	 * @return the current argument
 	 */
-	Argument overrideSuggestionsT(BiFunction<CommandSender, Object[], IStringTooltip[]> suggestions);
+	Argument overrideSuggestionsT(BiFunction<CommandSender, Arguments, IStringTooltip[]> suggestions);
 	
 }

@@ -18,6 +18,8 @@ import java.util.stream.Collectors;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.SimpleCommandMap;
+import org.bukkit.help.GenericCommandHelpTopic;
+import org.bukkit.help.HelpTopic;
 import org.bukkit.permissions.Permission;
 
 import com.mojang.brigadier.Command;
@@ -71,6 +73,7 @@ public class CommandAPIHandler<CommandListenerWrapper> {
 	
 	final Map<ClassCache, Field> FIELDS = new HashMap<>();
 	final TreeMap<String, CommandPermission> PERMISSIONS_TO_FIX = new TreeMap<>();
+	final TreeMap<String, String> DESCRIPTIONS = new TreeMap<>();
 	final NMS<CommandListenerWrapper> NMS;
 	final CommandDispatcher<CommandListenerWrapper> DISPATCHER;
 	final Map<String, List<String>> registeredCommands; //Keep track of what has been registered for type checking 
@@ -442,12 +445,43 @@ public class CommandAPIHandler<CommandListenerWrapper> {
 				map.getCommand(cmdName).setPermission(permNode);
 			}
 			if (NMS.isVanillaCommandWrapper(map.getCommand("minecraft:" + cmdName))) {
-				map.getCommand(cmdName).setPermission(permNode);
+				map.getCommand("minecraft:" + cmdName).setPermission(permNode);
 			}
 		}
 		CommandAPI.getLog().info("Linked " + PERMISSIONS_TO_FIX.size() + " Bukkit permissions to commands");
 	}
+	
+	@SuppressWarnings("unchecked")
+	private void setHelpTopic(String name, org.bukkit.command.Command command) {
+		Field f = getField(Bukkit.getServer().getHelpMap().getClass(), "helpTopics");
+		Map<String, HelpTopic> helpMap = null;
+		try {				
+			helpMap = (Map<String, HelpTopic>) f.get(Bukkit.getServer().getHelpMap());
+		} catch (IllegalArgumentException | IllegalAccessException e) {
+			e.printStackTrace();
+		}
+		helpMap.put("/" + name, new GenericCommandHelpTopic(command));
+	}
 
+	void linkDescriptions() {
+		SimpleCommandMap map = NMS.getSimpleCommandMap();
+
+		for(Entry<String, String> entry : DESCRIPTIONS.entrySet()) {
+			String cmdName = entry.getKey();
+			String description = entry.getValue();
+			
+			if (NMS.isVanillaCommandWrapper(map.getCommand(cmdName))) {
+				map.getCommand(cmdName).setDescription(description);
+				setHelpTopic(cmdName, map.getCommand(cmdName));
+				
+			}
+			if (NMS.isVanillaCommandWrapper(map.getCommand("minecraft:" + cmdName))) {
+				map.getCommand("minecraft:" + cmdName).setDescription(description);
+				setHelpTopic("minecraft:" + cmdName, map.getCommand("minecraft:" + cmdName));
+			}
+		}
+	}
+	
 	//////////////////////////////////////////////////////////////////////////////////////////////////////
 	// SECTION: Registration //
 	//////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -455,7 +489,7 @@ public class CommandAPIHandler<CommandListenerWrapper> {
 	// Builds our NMS command using the given arguments for this method, then
 	// registers it
 	void register(String commandName, CommandPermission permissions, String[] aliases, Predicate<CommandSender> requirements,
-			final List<Argument> args, CustomCommandExecutor executor, boolean converted) throws Exception {
+			final List<Argument> args, CustomCommandExecutor executor, boolean converted, String description) throws Exception {
 		
 		//"Expands" our MultiLiterals into Literals
 		Predicate<Argument> isMultiLiteral = arg -> arg.getArgumentType() == CommandAPIArgumentType.MULTI_LITERAL;
@@ -488,7 +522,7 @@ public class CommandAPIHandler<CommandListenerWrapper> {
 								j++;
 							}
 						}
-						register(commandName, permissions, aliases, requirements, newArgs, executor, converted);
+						register(commandName, permissions, aliases, requirements, newArgs, executor, converted, description);
 					}
 					return;
 				}
@@ -545,6 +579,7 @@ public class CommandAPIHandler<CommandListenerWrapper> {
 			CommandAPI.logInfo("Registering command /" + commandName + " " + builder.toString());
 		}
 
+		DESCRIPTIONS.put(commandName.toLowerCase(), description);
 		Command<CommandListenerWrapper> command = generateCommand(args, executor, converted);
 
 		/*

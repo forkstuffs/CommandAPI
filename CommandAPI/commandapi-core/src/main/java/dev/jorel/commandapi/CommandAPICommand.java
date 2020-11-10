@@ -40,6 +40,7 @@ public class CommandAPICommand {
 	List<CommandAPICommand> subcommands = new ArrayList<>();
 	CustomCommandExecutor executor = new CustomCommandExecutor();
 	boolean isConverted;
+	String description;
 	
 	/**
 	 * Creates a new command builder
@@ -48,6 +49,16 @@ public class CommandAPICommand {
 	public CommandAPICommand(String commandName) {
 		this.commandName = commandName;
 		this.isConverted = false;
+	}
+	
+	/**
+	 * Adds a description to the current command builder
+	 * @param description the description to add that describes what the command does
+	 * @return this command builder
+	 */
+	public CommandAPICommand withDescription(String description) {
+		this.description = description;
+		return this;
 	}
 	
 	/**
@@ -359,7 +370,7 @@ public class CommandAPICommand {
 			}
 			
 			if(!executor.isEmpty()) {
-				CommandAPIHandler.getInstance().register(commandName, permission, aliases, requirements, copyOfArgs, executor, isConverted);
+				CommandAPIHandler.getInstance().register(commandName, permission, aliases, requirements, copyOfArgs, executor, isConverted, description);
 			}
 			
 			if(this.subcommands.size() > 0) {

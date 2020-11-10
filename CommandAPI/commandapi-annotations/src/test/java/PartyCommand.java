@@ -13,17 +13,16 @@ import dev.jorel.commandapi.arguments.PlayerArgument;
 import dev.jorel.commandapi.arguments.StringArgument;
 
 @Command("party")
+@Description("Party related stuff")
 public class PartyCommand {
 	
 	@Default
-	@Description("Show party help")
 	public static void party(CommandSender sender, Object[] args) {
 		// Show help
 	}
 		
 	@Subcommand("tp")
 	@Permission("party.tp")
-	@Description("Teleport to a party member")
 	@Alias({"tele", "teleport"})
 	@Arg(name = "target", type = PlayerArgument.class)
 	public static void teleport(Player player, Object[] args) {
@@ -33,7 +32,6 @@ public class PartyCommand {
 	
 	@Subcommand("create")
 	@NeedsOp
-	@Description("Creates a new party")
 	@Arg(name = "name", type = StringArgument.class)
 	@Arg(name = "owner", type = PlayerArgument.class)
 	public static void createParty(CommandSender sender, Object[] args) {

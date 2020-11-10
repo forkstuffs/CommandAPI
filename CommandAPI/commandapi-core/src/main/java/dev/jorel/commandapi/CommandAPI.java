@@ -99,6 +99,7 @@ public abstract class CommandAPI {
 			
 			//Sort out permissions after the server has finished registering them all
 			CommandAPIHandler.getInstance().fixPermissions();
+			CommandAPIHandler.getInstance().linkDescriptions();
 			
 			try {
 				CommandAPIHandler.getInstance().getNMS().reloadDataPacks();

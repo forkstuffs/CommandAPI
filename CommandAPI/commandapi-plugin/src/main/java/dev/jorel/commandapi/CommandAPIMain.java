@@ -30,6 +30,13 @@ public class CommandAPIMain extends JavaPlugin implements Listener {
 				}
 			}
 		}
+		
+		new CommandAPICommand("aaaaaaa")
+			.withDescription("This command prints 'hi' in the console")
+			.executes((s, a) -> {
+				System.out.println("hi");
+			})
+			.register();
 	}
 	
 	@Override

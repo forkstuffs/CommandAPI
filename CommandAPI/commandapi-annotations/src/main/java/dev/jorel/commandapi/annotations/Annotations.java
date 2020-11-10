@@ -57,8 +57,8 @@ public class Annotations extends AbstractProcessor {
 	}
 
 	@SuppressWarnings("unused")
-	private void processCommand(RoundEnvironment roundEnv, Element element) throws IOException {
-		TypeElement commandClass = (TypeElement) element;
+	private void processCommand(RoundEnvironment roundEnv, Element classElement) throws IOException {
+		TypeElement commandClass = (TypeElement) classElement;
 		JavaFileObject builderFile = processingEnv.getFiler()
 				.createSourceFile(commandClass.getQualifiedName() + "$Command");
 
@@ -92,16 +92,23 @@ public class Annotations extends AbstractProcessor {
 			out.println();
 			indent++;
 
-			for (Element methodElement : element.getEnclosedElements()) {
+			for (Element methodElement : classElement.getEnclosedElements()) {
 				if (methodElement.getAnnotation(Default.class) != null
 						|| methodElement.getAnnotation(Subcommand.class) != null) {
 					
 					ExecutableType methodType = (ExecutableType) methodElement.asType();
 
 					out.print(indent(indent) + "new CommandAPICommand(\"");
-					out.print(commandClass.getAnnotation(Command.class).value());
+					out.print(classElement.getAnnotation(Command.class).value());
 					out.println("\")");
 					indent++;
+
+					// @Description
+					if (classElement.getAnnotation(Description.class) != null) {
+						out.print(indent(indent) + ".withDescription(\"");
+						out.print(classElement.getAnnotation(Description.class).value());
+						out.println("\")");
+					}
 
 					// @Subcommand (Also handle @Alias for @Subcommand)
 					if (methodElement.getAnnotation(Subcommand.class) != null) {
@@ -117,7 +124,6 @@ public class Annotations extends AbstractProcessor {
 						
 						out.println(").setListed(false))");
 					}
-//				    .withArguments(new MultiLiteralArgument("adventure", "creative", "spectator", "survival"))
 
 					// @NeedsOp
 					if (methodElement.getAnnotation(NeedsOp.class) != null) {
@@ -130,7 +136,7 @@ public class Annotations extends AbstractProcessor {
 						out.print(methodElement.getAnnotation(Permission.class).value());
 						out.println("\")");
 					}
-
+					
 					// @Alias (@Default only)
 					if (methodElement.getAnnotation(Alias.class) != null & methodElement.getAnnotation(Default.class) != null) {
 						out.print(indent(indent) + ".withAliases(");

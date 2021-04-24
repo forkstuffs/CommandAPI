@@ -193,7 +193,7 @@ public class AdvancedConverter {
 				case ENCHANTMENT:
 					return new EnchantmentArgument(nodeName);
 				case ENTITY_SELECTOR:
-					return new EntitySelectorArgument(nodeName, EntitySelector.ONE_ENTITY);
+					return new EntitySelectorArgument(nodeName, EntitySelector.MANY_ENTITIES);
 				case ENTITY_TYPE:
 					return new EntityTypeArgument(nodeName);
 				case ENVIRONMENT:

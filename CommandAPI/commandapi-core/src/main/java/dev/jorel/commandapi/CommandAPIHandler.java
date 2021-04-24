@@ -18,6 +18,8 @@ import java.util.stream.Collectors;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.SimpleCommandMap;
+import org.bukkit.entity.Entity;
+import org.bukkit.entity.Player;
 import org.bukkit.permissions.Permission;
 
 import com.mojang.brigadier.Command;
@@ -181,15 +183,29 @@ public class CommandAPIHandler<CommandListenerWrapper> {
 			CommandSender sender = NMS.getSenderForCommand(cmdCtx, executor.isForceNative());
 			Object[] arguments;
 			if(converted) {
+				Object[] argObjs = argsToObjectArr(cmdCtx, args);
+				
 				// Return a String[] of arguments for converted commands
 				String[] argsAndCmd = cmdCtx.getRange().get(cmdCtx.getInput()).split(" ");
 				String[] result = new String[argsAndCmd.length - 1];
 				System.arraycopy(argsAndCmd, 1, result, 0, argsAndCmd.length - 1);
-				arguments = result;
+				for(int i = 0; i < args.size(); i++) {
+					if(args.get(i) instanceof EntitySelectorArgument) {
+						@SuppressWarnings("unchecked")
+						List<Entity> entities = (List<Entity>)argObjs[i];
+						for(Entity e : entities)
+						{
+							result[i] = e.getName();
+							executor.execute(sender, result);	
+						}
+					}
+				}
+
+				return 1; // Preliminary, should collate results instead.
 			} else {
 				arguments = argsToObjectArr(cmdCtx, args);
+				return executor.execute(sender, arguments);
 			}
-			return executor.execute(sender, arguments);
 		};
 	}
 	

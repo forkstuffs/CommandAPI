@@ -53,6 +53,21 @@
 		    <version>1.16.5-R0.1-SNAPSHOT</version>
 		    <scope>provided</scope>
 		</dependency>
+		<dependency>
+		    <groupId>com.destroystokyo.paper</groupId>
+		    <artifactId>paper-mojangapi</artifactId>
+		    <version>1.16.5-R0.1-SNAPSHOT</version>
+		    <scope>provided</scope>
+		</dependency>
+		
+		<!-- Temporary, do not use in actual production -->
+		<dependency>
+			<groupId>com.destroystokyo.paper</groupId>
+		    <artifactId>paper-adventure</artifactId>
+		    <version>1.16.5-R0.1-SNAPSHOT</version>
+		    <scope>system</scope>
+    		<systemPath>D:/Users/Jorel/Documents/My Games/minecraft/_Paper_1_16_5/cache/patched_1.16.5.jar</systemPath>
+		</dependency>
         
         <dependency>
             <groupId>com.mojang</groupId>

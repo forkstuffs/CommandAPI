@@ -2,18 +2,23 @@ package dev.jorel.commandapi.nms;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.EnumSet;
+import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Predicate;
 
 import org.bukkit.Axis;
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
+import org.bukkit.World;
 import org.bukkit.World.Environment;
 import org.bukkit.advancement.Advancement;
 import org.bukkit.block.Biome;
@@ -22,18 +27,26 @@ import org.bukkit.block.data.BlockData;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.enchantments.Enchantment;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.Recipe;
 import org.bukkit.loot.LootTable;
 import org.bukkit.potion.PotionEffectType;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
+import com.destroystokyo.paper.brigadier.BukkitBrigadierCommandSource;
+import com.destroystokyo.paper.event.server.AsyncTabCompleteEvent;
 import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.LiteralMessage;
+import com.mojang.brigadier.Message;
 import com.mojang.brigadier.arguments.ArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.suggestion.SuggestionProvider;
+import com.mojang.brigadier.suggestion.Suggestions;
 
 import de.tr7zw.changeme.nbtapi.NBTContainer;
 import dev.jorel.commandapi.arguments.EntitySelectorArgument.EntitySelector;
@@ -44,13 +57,15 @@ import dev.jorel.commandapi.wrappers.FunctionWrapper;
 import dev.jorel.commandapi.wrappers.IntegerRange;
 import dev.jorel.commandapi.wrappers.Location2D;
 import dev.jorel.commandapi.wrappers.MathOperation;
+import dev.jorel.commandapi.wrappers.NativeProxyCommandSender;
 import dev.jorel.commandapi.wrappers.Rotation;
 import dev.jorel.commandapi.wrappers.ScoreboardSlot;
 import dev.jorel.commandapi.wrappers.SimpleFunctionWrapper;
+import io.papermc.paper.adventure.PaperAdventure;
 import net.kyori.adventure.text.Component;
 import net.md_5.bungee.api.chat.BaseComponent;
 
-public interface NMS<CommandListenerWrapper> {
+public interface NMS {
 
 	/**
 	 * Resends the command dispatcher's set of commands to a player.
@@ -77,37 +92,115 @@ public interface NMS<CommandListenerWrapper> {
 	 * @param dispatcher The Brigadier CommandDispatcher
 	 * @throws IOException When the file fails to be written to
 	 */
-	void createDispatcherFile(File file, CommandDispatcher<CommandListenerWrapper> dispatcher) throws IOException;
+	void createDispatcherFile(File file, CommandDispatcher<BukkitBrigadierCommandSource> dispatcher) throws IOException;
 
+	record Completion(String suggestion, Component tooltip) {
+		public AsyncTabCompleteEvent.Completion toCompletion() {
+			return new AsyncTabCompleteEvent.Completion() {
+
+				@Override
+				public @NotNull String suggestion() {
+					return suggestion;
+				}
+
+				@Override
+				public @Nullable Component tooltip() {
+					return tooltip;
+				}
+				
+			};
+		}
+	};
+	
 	/**
 	 * Retrieve a specific NMS implemented SuggestionProvider
 	 * 
 	 * @param provider The SuggestionProvider type to retrieve
 	 * @return A SuggestionProvider that matches the SuggestionProviders input
 	 */
-	SuggestionProvider<CommandListenerWrapper> getSuggestionProvider(SuggestionProviders provider);
+	default SuggestionProvider<BukkitBrigadierCommandSource> getSuggestionProvider(SuggestionProviders provider) {
+		
+		// TODO: This mess
+		switch (provider) {
+		case FUNCTION:
+//			return (context, builder) -> {
+//				CustomFunctionData functionData = getCLW(context).getServer().getFunctionData();
+//				ICompletionProvider.a(functionData.g(), builder, "#");
+//				return ICompletionProvider.a(functionData.f(), builder);
+//			};
+		case RECIPES:
+//			return CompletionProviders.b;
+		case SOUNDS:
+//			return CompletionProviders.c;
+		case ADVANCEMENTS:
+			List<AsyncTabCompleteEvent.Completion> completions = new ArrayList<>();
+			Bukkit.getServer().advancementIterator().forEachRemaining(a -> {
+				completions.add(new Completion(a.getKey().toString(), null).toCompletion());
+			});
+			return (cmdCtx, builder) -> {
+				String remaining = builder.getRemaining().toLowerCase(Locale.ROOT);
+				for (int i = 0; i < completions.size(); i++) {
+					AsyncTabCompleteEvent.Completion str = completions.get(i);
+					if (str.suggestion().toLowerCase(Locale.ROOT).startsWith(remaining)) {
+						Message tooltipMsg = null;
+						if(str.tooltip() != null) {
+							tooltipMsg = new LiteralMessage(PaperAdventure.PLAIN.serialize(str.tooltip()));
+						}
+						builder.suggest(str.suggestion(), tooltipMsg);
+					}
+				}
+				return builder.buildFuture();
+			};
+		case LOOT_TABLES:
+//			return (context, builder) -> {
+//				LootTableRegistry lootTables = getCLW(context).getServer().getLootTableRegistry();
+//				return ICompletionProvider.a(lootTables.a(), builder);
+//			};
+		case BIOMES:
+//			return CompletionProviders.d;
+		case ENTITIES:
+//			return CompletionProviders.e;
+		default:
+			return (context, builder) -> Suggestions.empty();
+		}
+	}
 
 	/**
 	 * Retrieves a CommandSender, given some CommandContext. This method should
 	 * handle Proxied CommandSenders for entities if a Proxy is being used.
 	 * 
 	 * @param cmdCtx      The
-	 *                    <code>CommandContext&lt;CommandListenerWrapper&gt;</code>
+	 *                    <code>CommandContext&lt;BukkitBrigadierCommandSource&gt;</code>
 	 *                    for a given command
 	 * @param forceNative whether or not the CommandSender should be a
 	 *                    NativeProxyCommandSender or not
 	 * @return A CommandSender instance (such as a ProxiedNativeCommandSender or
 	 *         Player)
 	 */
-	CommandSender getSenderForCommand(CommandContext<CommandListenerWrapper> cmdCtx, boolean forceNative);
+	default CommandSender getSenderForCommand(CommandContext<BukkitBrigadierCommandSource> cmdCtx, boolean forceNative) {
+		BukkitBrigadierCommandSource commandSource = cmdCtx.getSource();
+
+		CommandSender sender = commandSource.getBukkitSender();
+		Location location = commandSource.getBukkitLocation();
+
+		Entity proxyEntity = commandSource.getBukkitEntity();
+		CommandSender proxy = proxyEntity;
+		if (forceNative || (proxy != null && !sender.equals(proxy))) {
+			sender = new NativeProxyCommandSender(sender, proxy, location, commandSource.getBukkitWorld());
+		}
+
+		return sender;
+	}
 
 	/**
-	 * Returns a CommandSender of a given CommandListenerWrapper object
+	 * Returns a CommandSender of a given BukkitBrigadierCommandSource object
 	 * 
-	 * @param clw The CommandListenerWrapper object
+	 * @param clw The BukkitBrigadierCommandSource object
 	 * @return A CommandSender (not proxied) from the command listener wrapper
 	 */
-	CommandSender getCommandSenderForCLW(CommandListenerWrapper clw);
+	default CommandSender getCommandSenderForCLW(BukkitBrigadierCommandSource clw) {
+		return clw.getBukkitSender();
+	}
 
 	/**
 	 * Converts a CommandSender into a CLW
@@ -115,14 +208,43 @@ public interface NMS<CommandListenerWrapper> {
 	 * @param sender the command sender to convert
 	 * @return a CLW.
 	 */
-	CommandListenerWrapper getCLWFromCommandSender(CommandSender sender);
+	default BukkitBrigadierCommandSource getCLWFromCommandSender(CommandSender sender) {
+		return new BukkitBrigadierCommandSource() {
+
+			@Override
+			public @Nullable Entity getBukkitEntity() {
+				if(sender instanceof Entity entity) {
+					return entity;
+				} else {
+					return null;
+				}
+			}
+
+			@Override
+			public @Nullable World getBukkitWorld() {
+				// TODO Implement getWorld
+				return null;
+			}
+
+			@Override
+			public @Nullable Location getBukkitLocation() {
+				// TODO Implement getLocation
+				return null;
+			}
+
+			@Override
+			public CommandSender getBukkitSender() {
+				return sender;
+			}
+		};
+	}
 
 	/**
 	 * Returns the Brigadier CommandDispatcher from the NMS CommandDispatcher
 	 * 
 	 * @return A Brigadier CommandDispatcher
 	 */
-	CommandDispatcher<CommandListenerWrapper> getBrigadierDispatcher();
+	CommandDispatcher<BukkitBrigadierCommandSource> getBrigadierDispatcher();
 
 	/**
 	 * Checks if a Command is an instance of the OBC VanillaCommandWrapper
@@ -145,97 +267,97 @@ public interface NMS<CommandListenerWrapper> {
 	};
 
 	/* Argument implementations with CommandSyntaxExceptions */
-	Advancement getAdvancement(CommandContext<CommandListenerWrapper> cmdCtx, String key) throws CommandSyntaxException;
+	Advancement getAdvancement(CommandContext<BukkitBrigadierCommandSource> cmdCtx, String key) throws CommandSyntaxException;
 
-	Predicate<Block> getBlockPredicate(CommandContext<CommandListenerWrapper> cmdCtx, String key)
+	Predicate<Block> getBlockPredicate(CommandContext<BukkitBrigadierCommandSource> cmdCtx, String key)
 			throws CommandSyntaxException;
 	
-	Component getAdventureChat(CommandContext<CommandListenerWrapper> cmdCtx, String key) throws CommandSyntaxException;
+	Component getAdventureChat(CommandContext<BukkitBrigadierCommandSource> cmdCtx, String key) throws CommandSyntaxException;
 
-	BaseComponent[] getChat(CommandContext<CommandListenerWrapper> cmdCtx, String key) throws CommandSyntaxException;
+	BaseComponent[] getChat(CommandContext<BukkitBrigadierCommandSource> cmdCtx, String key) throws CommandSyntaxException;
 
-	Environment getDimension(CommandContext<CommandListenerWrapper> cmdCtx, String key) throws CommandSyntaxException;
+	Environment getDimension(CommandContext<BukkitBrigadierCommandSource> cmdCtx, String key) throws CommandSyntaxException;
 
-	ItemStack getItemStack(CommandContext<CommandListenerWrapper> cmdCtx, String key) throws CommandSyntaxException;
+	ItemStack getItemStack(CommandContext<BukkitBrigadierCommandSource> cmdCtx, String key) throws CommandSyntaxException;
 
-	Object getEntitySelector(CommandContext<CommandListenerWrapper> cmdCtx, String key, EntitySelector selector)
+	Object getEntitySelector(CommandContext<BukkitBrigadierCommandSource> cmdCtx, String key, EntitySelector selector)
 			throws CommandSyntaxException;
 
-	EntityType getEntityType(CommandContext<CommandListenerWrapper> cmdCtx, String key) throws CommandSyntaxException;
+	EntityType getEntityType(CommandContext<BukkitBrigadierCommandSource> cmdCtx, String key) throws CommandSyntaxException;
 
-	FunctionWrapper[] getFunction(CommandContext<CommandListenerWrapper> cmdCtx, String key)
+	FunctionWrapper[] getFunction(CommandContext<BukkitBrigadierCommandSource> cmdCtx, String key)
 			throws CommandSyntaxException;
 
-	Predicate<ItemStack> getItemStackPredicate(CommandContext<CommandListenerWrapper> cmdCtx, String key)
+	Predicate<ItemStack> getItemStackPredicate(CommandContext<BukkitBrigadierCommandSource> cmdCtx, String key)
 			throws CommandSyntaxException;
 
-	String getKeyedAsString(CommandContext<CommandListenerWrapper> cmdCtx, String key) throws CommandSyntaxException;
+	String getKeyedAsString(CommandContext<BukkitBrigadierCommandSource> cmdCtx, String key) throws CommandSyntaxException;
 
-	Location getLocation(CommandContext<CommandListenerWrapper> cmdCtx, String key, LocationType locationType)
+	Location getLocation(CommandContext<BukkitBrigadierCommandSource> cmdCtx, String key, LocationType locationType)
 			throws CommandSyntaxException;
 
-	Location2D getLocation2D(CommandContext<CommandListenerWrapper> cmdCtx, String key, LocationType locationType2d)
+	Location2D getLocation2D(CommandContext<BukkitBrigadierCommandSource> cmdCtx, String key, LocationType locationType2d)
 			throws CommandSyntaxException;
 
-	String getObjective(CommandContext<CommandListenerWrapper> cmdCtx, String key)
+	String getObjective(CommandContext<BukkitBrigadierCommandSource> cmdCtx, String key)
 			throws IllegalArgumentException, CommandSyntaxException;
 
-	Player getPlayer(CommandContext<CommandListenerWrapper> cmdCtx, String key) throws CommandSyntaxException;
+	Player getPlayer(CommandContext<BukkitBrigadierCommandSource> cmdCtx, String key) throws CommandSyntaxException;
 
-	PotionEffectType getPotionEffect(CommandContext<CommandListenerWrapper> cmdCtx, String key)
+	PotionEffectType getPotionEffect(CommandContext<BukkitBrigadierCommandSource> cmdCtx, String key)
 			throws CommandSyntaxException;
 
-	Recipe getRecipe(CommandContext<CommandListenerWrapper> cmdCtx, String key) throws CommandSyntaxException;
+	Recipe getRecipe(CommandContext<BukkitBrigadierCommandSource> cmdCtx, String key) throws CommandSyntaxException;
 
-	Collection<String> getScoreHolderMultiple(CommandContext<CommandListenerWrapper> cmdCtx, String key)
+	Collection<String> getScoreHolderMultiple(CommandContext<BukkitBrigadierCommandSource> cmdCtx, String key)
 			throws CommandSyntaxException;
 
-	String getScoreHolderSingle(CommandContext<CommandListenerWrapper> cmdCtx, String key)
+	String getScoreHolderSingle(CommandContext<BukkitBrigadierCommandSource> cmdCtx, String key)
 			throws CommandSyntaxException;
 
-	String getTeam(CommandContext<CommandListenerWrapper> cmdCtx, String key) throws CommandSyntaxException;
+	String getTeam(CommandContext<BukkitBrigadierCommandSource> cmdCtx, String key) throws CommandSyntaxException;
 
-	MathOperation getMathOperation(CommandContext<CommandListenerWrapper> cmdCtx, String key)
+	MathOperation getMathOperation(CommandContext<BukkitBrigadierCommandSource> cmdCtx, String key)
 			throws CommandSyntaxException;
 
 	/* Argument implementations without CommandSyntaxExceptions */
-	float getAngle(CommandContext<CommandListenerWrapper> cmdCtx, String key);
+	float getAngle(CommandContext<BukkitBrigadierCommandSource> cmdCtx, String key);
 
-	EnumSet<Axis> getAxis(CommandContext<CommandListenerWrapper> cmdCtx, String key);
+	EnumSet<Axis> getAxis(CommandContext<BukkitBrigadierCommandSource> cmdCtx, String key);
 
-	Biome getBiome(CommandContext<CommandListenerWrapper> cmdCtx, String key);
+	Biome getBiome(CommandContext<BukkitBrigadierCommandSource> cmdCtx, String key);
 
-	BlockData getBlockState(CommandContext<CommandListenerWrapper> cmdCtx, String key);
+	BlockData getBlockState(CommandContext<BukkitBrigadierCommandSource> cmdCtx, String key);
 
-	ChatColor getChatColor(CommandContext<CommandListenerWrapper> cmdCtx, String key);
+	ChatColor getChatColor(CommandContext<BukkitBrigadierCommandSource> cmdCtx, String key);
 	
-	Component getAdventureChatComponent(CommandContext<CommandListenerWrapper> cmdCtx, String key);
+	Component getAdventureChatComponent(CommandContext<BukkitBrigadierCommandSource> cmdCtx, String key);
 
-	BaseComponent[] getChatComponent(CommandContext<CommandListenerWrapper> cmdCtx, String key);
+	BaseComponent[] getChatComponent(CommandContext<BukkitBrigadierCommandSource> cmdCtx, String key);
 
-	Enchantment getEnchantment(CommandContext<CommandListenerWrapper> cmdCtx, String key);
+	Enchantment getEnchantment(CommandContext<BukkitBrigadierCommandSource> cmdCtx, String key);
 
-	FloatRange getFloatRange(CommandContext<CommandListenerWrapper> cmdCtx, String key);
+	FloatRange getFloatRange(CommandContext<BukkitBrigadierCommandSource> cmdCtx, String key);
 
-	IntegerRange getIntRange(CommandContext<CommandListenerWrapper> cmdCtx, String key);
+	IntegerRange getIntRange(CommandContext<BukkitBrigadierCommandSource> cmdCtx, String key);
 
-	LootTable getLootTable(CommandContext<CommandListenerWrapper> cmdCtx, String key);
+	LootTable getLootTable(CommandContext<BukkitBrigadierCommandSource> cmdCtx, String key);
 
-	NBTContainer getNBTCompound(CommandContext<CommandListenerWrapper> cmdCtx, String key);
+	NBTContainer getNBTCompound(CommandContext<BukkitBrigadierCommandSource> cmdCtx, String key);
 
-	String getObjectiveCriteria(CommandContext<CommandListenerWrapper> cmdCtx, String key);
+	String getObjectiveCriteria(CommandContext<BukkitBrigadierCommandSource> cmdCtx, String key);
 
-	Particle getParticle(CommandContext<CommandListenerWrapper> cmdCtx, String key);
+	Particle getParticle(CommandContext<BukkitBrigadierCommandSource> cmdCtx, String key);
 
-	Rotation getRotation(CommandContext<CommandListenerWrapper> cmdCtx, String key);
+	Rotation getRotation(CommandContext<BukkitBrigadierCommandSource> cmdCtx, String key);
 
-	ScoreboardSlot getScoreboardSlot(CommandContext<CommandListenerWrapper> cmdCtx, String key);
+	ScoreboardSlot getScoreboardSlot(CommandContext<BukkitBrigadierCommandSource> cmdCtx, String key);
 
-	Sound getSound(CommandContext<CommandListenerWrapper> cmdCtx, String key);
+	Sound getSound(CommandContext<BukkitBrigadierCommandSource> cmdCtx, String key);
 
-	int getTime(CommandContext<CommandListenerWrapper> cmdCtx, String key);
+	int getTime(CommandContext<BukkitBrigadierCommandSource> cmdCtx, String key);
 
-	UUID getUUID(CommandContext<CommandListenerWrapper> cmdCtx, String key);
+	UUID getUUID(CommandContext<BukkitBrigadierCommandSource> cmdCtx, String key);
 
 	/* Argument types */
 	ArgumentType<?> _ArgumentAngle();

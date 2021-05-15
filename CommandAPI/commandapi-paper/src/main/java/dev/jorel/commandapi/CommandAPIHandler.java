@@ -22,7 +22,9 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.permissions.Permission;
 
-import com.mojang.brigadier.Command;
+import com.destroystokyo.paper.brigadier.BukkitBrigadierCommand;
+import com.destroystokyo.paper.brigadier.BukkitBrigadierCommandSource;
+import com.destroystokyo.paper.event.server.AsyncTabCompleteEvent;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.LiteralMessage;
 import com.mojang.brigadier.Message;
@@ -54,6 +56,7 @@ import dev.jorel.commandapi.arguments.LocationType;
 import dev.jorel.commandapi.arguments.MultiLiteralArgument;
 import dev.jorel.commandapi.arguments.ScoreHolderArgument;
 import dev.jorel.commandapi.nms.NMS;
+import io.papermc.paper.adventure.PaperAdventure;
 
 /**
  * Handles the main backend of the CommandAPI. This constructs brigadier Command
@@ -61,21 +64,22 @@ import dev.jorel.commandapi.nms.NMS;
  * handles permission registration for Bukkit, interactions for NMS and the
  * registration and unregistration of commands.
  */
-public class CommandAPIHandler<CommandListenerWrapper> {
+public class CommandAPIHandler {
 	
-	private static CommandAPIHandler<?> instance;
+	private static CommandAPIHandler instance;
 	
-	public static CommandAPIHandler<?> getInstance() {
+	public static CommandAPIHandler getInstance() {
 		if(instance == null) {
-			instance = new CommandAPIHandler<>();
+			instance = new CommandAPIHandler();
 		}
 		return instance;
 	}
 	
 	final Map<ClassCache, Field> FIELDS = new HashMap<>();
 	final TreeMap<String, CommandPermission> PERMISSIONS_TO_FIX = new TreeMap<>();
-	final NMS<CommandListenerWrapper> NMS;
-	final CommandDispatcher<CommandListenerWrapper> DISPATCHER;
+	final NMS NMS;
+	final CommandDispatcher<BukkitBrigadierCommandSource> DISPATCHER;
+	
 	final Map<String, List<String>> registeredCommands; //Keep track of what has been registered for type checking 
 	
 	private CommandAPIHandler() {
@@ -86,6 +90,7 @@ public class CommandAPIHandler<CommandListenerWrapper> {
 	}
 	
 	void checkDependencies() {
+		
 		try {
 			@SuppressWarnings("unused")
 			Class<?> commandDispatcherClass = CommandDispatcher.class;
@@ -126,7 +131,7 @@ public class CommandAPIHandler<CommandListenerWrapper> {
 	 * 
 	 * @return an instance of NMS
 	 */
-	public NMS<CommandListenerWrapper> getNMS() {
+	public NMS getNMS() {
 		return NMS;
 	}
 	
@@ -175,77 +180,95 @@ public class CommandAPIHandler<CommandListenerWrapper> {
 	 * @return a brigadier command which is registered internally
 	 * @throws CommandSyntaxException if an error occurs when the command is ran
 	 */
-	Command<CommandListenerWrapper> generateCommand(List<Argument> args, CustomCommandExecutor executor, boolean converted)
+	BukkitBrigadierCommand<BukkitBrigadierCommandSource> generateCommand(List<Argument> args, CustomCommandExecutor executor, boolean converted)
 			throws CommandSyntaxException {
 
-		// Generate our command from executor
-		return (cmdCtx) -> {
-			CommandSender sender = NMS.getSenderForCommand(cmdCtx, executor.isForceNative());
-			if(converted) {
-				Object[] argObjs = argsToObjectArr(cmdCtx, args);
-				int resultValue = 0;
+		return new BukkitBrigadierCommand<BukkitBrigadierCommandSource>() {
+
+			@Override
+			public int run(CommandContext<BukkitBrigadierCommandSource> cmdCtx) throws CommandSyntaxException {
 				
-				// Return a String[] of arguments for converted commands
-				String[] argsAndCmd = cmdCtx.getRange().get(cmdCtx.getInput()).split(" ");
-				String[] result = new String[argsAndCmd.length - 1];
-				System.arraycopy(argsAndCmd, 1, result, 0, argsAndCmd.length - 1);
-				
-				@SuppressWarnings("unchecked")
-				List<String>[] entityNamesForArgs = new List[args.size()];
-				
-				for(int i = 0; i < args.size(); i++) {
-					if(args.get(i) instanceof EntitySelectorArgument) {
-						EntitySelectorArgument entitySelectorArg = (EntitySelectorArgument) args.get(i);
-						switch(entitySelectorArg.getEntitySelector())
-						{
-						case MANY_ENTITIES:
-							@SuppressWarnings("unchecked")
-							List<Entity> entities = (List<Entity>) argObjs[i];
-							entityNamesForArgs[i] = entities.stream().map(Entity::getName).collect(Collectors.toList());
-							break;
-						case MANY_PLAYERS:
-							@SuppressWarnings("unchecked")
-							List<Player> players = (List<Player>) argObjs[i];
-							entityNamesForArgs[i] = players.stream().map(Entity::getName).collect(Collectors.toList());
-							break;
-						case ONE_ENTITY:
-							Entity entity = (Entity) argObjs[i];
-							entityNamesForArgs[i] = Arrays.asList(new String[] {entity.getName()});
-							break;
-						case ONE_PLAYER:
-							Player player = (Player) argObjs[i];
-							entityNamesForArgs[i] = Arrays.asList(new String[] {player.getName()});
-							break;
-						default:
-							break;
-						}
-					} else {
-						entityNamesForArgs[i] = Arrays.asList(new String[] {null});
-					}
-				}
-				
-				@SuppressWarnings("unchecked")
-				List<List<?>> product = (List<List<?>>) CartesianProduct.product(entityNamesForArgs);
-				CartesianProduct.flatten(product);
-				
-				// These objects in obj are List<String>
-				for(Object obj : product) {
-					@SuppressWarnings("unchecked")
-					List<String> strings = (List<String>) obj;
+				CommandSender sender = cmdCtx.getSource().getBukkitSender();
+				if(converted) {
+					Object[] argObjs = argsToObjectArr(cmdCtx, args);
+					int resultValue = 0;
 					
-					// We assume result.length == strings.length
-					for(int i = 0; i < result.length; i++) {
-						if(strings.get(i) != null) {
-							result[i] = strings.get(i);
+					// Return a String[] of arguments for converted commands
+					String[] argsAndCmd = cmdCtx.getRange().get(cmdCtx.getInput()).split(" ");
+					String[] result = new String[argsAndCmd.length - 1];
+					System.arraycopy(argsAndCmd, 1, result, 0, argsAndCmd.length - 1);
+					
+					@SuppressWarnings("unchecked")
+					List<String>[] entityNamesForArgs = new List[args.size()];
+					
+					for(int i = 0; i < args.size(); i++) {
+						if(args.get(i) instanceof EntitySelectorArgument) {
+							EntitySelectorArgument entitySelectorArg = (EntitySelectorArgument) args.get(i);
+							switch(entitySelectorArg.getEntitySelector())
+							{
+							case MANY_ENTITIES:
+								@SuppressWarnings("unchecked")
+								List<Entity> entities = (List<Entity>) argObjs[i];
+								entityNamesForArgs[i] = entities.stream().map(Entity::getName).collect(Collectors.toList());
+								break;
+							case MANY_PLAYERS:
+								@SuppressWarnings("unchecked")
+								List<Player> players = (List<Player>) argObjs[i];
+								entityNamesForArgs[i] = players.stream().map(Entity::getName).collect(Collectors.toList());
+								break;
+							case ONE_ENTITY:
+								Entity entity = (Entity) argObjs[i];
+								entityNamesForArgs[i] = Arrays.asList(new String[] {entity.getName()});
+								break;
+							case ONE_PLAYER:
+								Player player = (Player) argObjs[i];
+								entityNamesForArgs[i] = Arrays.asList(new String[] {player.getName()});
+								break;
+							default:
+								break;
+							}
+						} else {
+							entityNamesForArgs[i] = Arrays.asList(new String[] {null});
 						}
 					}
-					resultValue += executor.execute(sender, result);
+					
+					@SuppressWarnings("unchecked")
+					List<List<?>> product = (List<List<?>>) CartesianProduct.product(entityNamesForArgs);
+					CartesianProduct.flatten(product);
+					
+					// These objects in obj are List<String>
+					for(Object obj : product) {
+						@SuppressWarnings("unchecked")
+						List<String> strings = (List<String>) obj;
+						
+						// We assume result.length == strings.length
+						for(int i = 0; i < result.length; i++) {
+							if(strings.get(i) != null) {
+								result[i] = strings.get(i);
+							}
+						}
+						resultValue += executor.execute(sender, result);
+					}
+					
+					
+					return resultValue;
+				} else {
+					return executor.execute(sender, argsToObjectArr(cmdCtx, args));
 				}
-				
-				
-				return resultValue;
-			} else {
-				return executor.execute(sender, argsToObjectArr(cmdCtx, args));
+				//return 0;
+			}
+
+			@Override
+			public boolean test(BukkitBrigadierCommandSource t) {
+				// TODO Auto-generated method stub
+				return false;
+			}
+
+			@Override
+			public CompletableFuture<Suggestions> getSuggestions(CommandContext<BukkitBrigadierCommandSource> context,
+					SuggestionsBuilder builder) throws CommandSyntaxException {
+				// TODO Auto-generated method stub
+				return null;
 			}
 		};
 	}
@@ -257,7 +280,7 @@ public class CommandAPIHandler<CommandListenerWrapper> {
 	 * @return an Object[] which can be used in (sender, args) -> 
 	 * @throws CommandSyntaxException
 	 */
-	Object[] argsToObjectArr(CommandContext<CommandListenerWrapper> cmdCtx, List<Argument> args) throws CommandSyntaxException {
+	Object[] argsToObjectArr(CommandContext<BukkitBrigadierCommandSource> cmdCtx, List<Argument> args) throws CommandSyntaxException {
 		// Array for arguments for executor
 		List<Object> argList = new ArrayList<>();
 
@@ -282,7 +305,7 @@ public class CommandAPIHandler<CommandListenerWrapper> {
 	 * @return the standard Bukkit type
 	 * @throws CommandSyntaxException
 	 */
-	Object parseArgument(CommandContext<CommandListenerWrapper> cmdCtx, String key, Argument value) throws CommandSyntaxException {
+	Object parseArgument(CommandContext<BukkitBrigadierCommandSource> cmdCtx, String key, Argument value) throws CommandSyntaxException {
 		if(!value.isListed()) {
 			return null;
 		}
@@ -425,7 +448,7 @@ public class CommandAPIHandler<CommandListenerWrapper> {
 	 *  	will be used for suggestions for said argument</li></ul>
 	 * @param requirements 
 	 */
-	Predicate<CommandListenerWrapper> generatePermissions(String commandName, CommandPermission permission, Predicate<CommandSender> requirements) {
+	Predicate<BukkitBrigadierCommandSource> generatePermissions(String commandName, CommandPermission permission, Predicate<CommandSender> requirements) {
 		// If we've already registered a permission, set it to the "parent" permission.
 		if (PERMISSIONS_TO_FIX.containsKey(commandName.toLowerCase())) {
 			if (!PERMISSIONS_TO_FIX.get(commandName.toLowerCase()).equals(permission)) {
@@ -446,7 +469,7 @@ public class CommandAPIHandler<CommandListenerWrapper> {
 			}
 		}
 
-		return (CommandListenerWrapper clw) -> permissionCheck(NMS.getCommandSenderForCLW(clw), finalPermission, requirements);
+		return (BukkitBrigadierCommandSource clw) -> permissionCheck(NMS.getCommandSenderForCLW(clw), finalPermission, requirements);
 	}
 
 	/**
@@ -610,7 +633,7 @@ public class CommandAPIHandler<CommandListenerWrapper> {
 			CommandAPI.logInfo("Registering command /" + commandName + " " + builder.toString());
 		}
 
-		Command<CommandListenerWrapper> command = generateCommand(args, executor, converted);
+		BukkitBrigadierCommand<BukkitBrigadierCommandSource> command = generateCommand(args, executor, converted);
 
 		/*
 		 * The innermost argument needs to be connected to the executor. Then that
@@ -620,7 +643,7 @@ public class CommandAPIHandler<CommandListenerWrapper> {
 		 * CommandName -> Args1 -> Args2 -> ... -> ArgsN -> Executor
 		 */
 
-		LiteralCommandNode<CommandListenerWrapper> resultantNode;
+		LiteralCommandNode<BukkitBrigadierCommandSource> resultantNode;
 		if (args.isEmpty()) {
 			// Link command name to the executor
 			resultantNode = DISPATCHER.register(getLiteralArgumentBuilder(commandName).requires(generatePermissions(commandName, permissions, requirements)).executes(command));
@@ -636,7 +659,7 @@ public class CommandAPIHandler<CommandListenerWrapper> {
 			//ArrayList<String> keys = new ArrayList<>(args.keySet());
 
 			// Link the last element to the executor
-			ArgumentBuilder<CommandListenerWrapper, ?> inner;
+			ArgumentBuilder<BukkitBrigadierCommandSource, ?> inner;
 			// New scope used here to prevent innerArg accidentally being used below
 			{
 				Argument innerArg = args.get(args.size() - 1);
@@ -662,7 +685,7 @@ public class CommandAPIHandler<CommandListenerWrapper> {
 			}
 
 			// Link everything else up, except the first
-			ArgumentBuilder<CommandListenerWrapper, ?> outer = inner;
+			ArgumentBuilder<BukkitBrigadierCommandSource, ?> outer = inner;
 			for (int i = args.size() - 2; i >= 0; i--) {
 				Argument outerArg = args.get(i);
 
@@ -716,7 +739,7 @@ public class CommandAPIHandler<CommandListenerWrapper> {
 	//////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	// NMS ICompletionProvider.a()
-	CompletableFuture<Suggestions> getSuggestionsBuilder(SuggestionsBuilder builder, IStringTooltip[] array) {
+	static CompletableFuture<Suggestions> getSuggestionsBuilder(SuggestionsBuilder builder, IStringTooltip[] array) {
 		String remaining = builder.getRemaining().toLowerCase(Locale.ROOT);
 		for (int i = 0; i < array.length; i++) {
 			IStringTooltip str = array[i];
@@ -726,6 +749,21 @@ public class CommandAPIHandler<CommandListenerWrapper> {
 					tooltipMsg = new LiteralMessage(str.getTooltip());
 				}
 				builder.suggest(str.getSuggestion(), tooltipMsg);
+			}
+		}
+		return builder.buildFuture();
+	}
+	
+	static CompletableFuture<Suggestions> getSuggestionsBuilder(SuggestionsBuilder builder, AsyncTabCompleteEvent.Completion[] array) {
+		String remaining = builder.getRemaining().toLowerCase(Locale.ROOT);
+		for (int i = 0; i < array.length; i++) {
+			AsyncTabCompleteEvent.Completion str = array[i];
+			if (str.suggestion().toLowerCase(Locale.ROOT).startsWith(remaining)) {
+				Message tooltipMsg = null;
+				if(str.tooltip() != null) {
+					tooltipMsg = new LiteralMessage(PaperAdventure.PLAIN.serialize(str.tooltip()));
+				}
+				builder.suggest(str.suggestion(), tooltipMsg);
 			}
 		}
 		return builder.buildFuture();
@@ -741,7 +779,7 @@ public class CommandAPIHandler<CommandListenerWrapper> {
 	 * @param commandName the name of the literal to create
 	 * @return a brigadier LiteralArgumentBuilder representing a literal
 	 */
-	LiteralArgumentBuilder<CommandListenerWrapper> getLiteralArgumentBuilder(String commandName) {
+	LiteralArgumentBuilder<BukkitBrigadierCommandSource> getLiteralArgumentBuilder(String commandName) {
 		return LiteralArgumentBuilder.literal(commandName);
 	}
 
@@ -752,21 +790,21 @@ public class CommandAPIHandler<CommandListenerWrapper> {
 	 * @param permission  the permission required to use this literal
 	 * @return a brigadier LiteralArgumentBuilder representing a literal
 	 */
-	LiteralArgumentBuilder<CommandListenerWrapper> getLiteralArgumentBuilderArgument(String commandName,
+	LiteralArgumentBuilder<BukkitBrigadierCommandSource> getLiteralArgumentBuilderArgument(String commandName,
 			CommandPermission permission, Predicate<CommandSender> requirements) {
-		LiteralArgumentBuilder<CommandListenerWrapper> builder = LiteralArgumentBuilder.literal(commandName);
-		return builder.requires((CommandListenerWrapper clw) -> permissionCheck(NMS.getCommandSenderForCLW(clw), permission, requirements));
+		LiteralArgumentBuilder<BukkitBrigadierCommandSource> builder = LiteralArgumentBuilder.literal(commandName);
+		return builder.requires((BukkitBrigadierCommandSource clw) -> permissionCheck(clw.getBukkitSender(), permission, requirements));
 	}
 
 	// Gets a RequiredArgumentBuilder for a DynamicSuggestedStringArgument
-	<T> RequiredArgumentBuilder<CommandListenerWrapper, T> getRequiredArgumentBuilderDynamic(
+	<T> RequiredArgumentBuilder<BukkitBrigadierCommandSource, T> getRequiredArgumentBuilderDynamic(
 			final List<Argument> args, Argument argument) {
 
 		// If there are no changes to the default suggestions, return it as normal
 		if (!argument.getOverriddenSuggestions().isPresent()) {
 			@SuppressWarnings("unchecked")
-			RequiredArgumentBuilder<CommandListenerWrapper, T> builder = RequiredArgumentBuilder.argument(argument.getNodeName(), (ArgumentType<T>) argument.getRawType());
-			return builder.requires(clw -> permissionCheck(NMS.getCommandSenderForCLW(clw), argument.getArgumentPermission(), argument.getRequirements()));
+			RequiredArgumentBuilder<BukkitBrigadierCommandSource, T> builder = RequiredArgumentBuilder.argument(argument.getNodeName(), (ArgumentType<T>) argument.getRawType());
+			return builder.requires(clw -> permissionCheck(clw.getBukkitSender(), argument.getArgumentPermission(), argument.getRequirements()));
 		}
 
 		// Otherwise, we have to handle arguments of the form BiFunction<CommandSender,
@@ -777,12 +815,12 @@ public class CommandAPIHandler<CommandListenerWrapper> {
 	}
 
 	// Gets a RequiredArgumentBuilder for an argument, given a SuggestionProvider
-	<T> RequiredArgumentBuilder<CommandListenerWrapper, T> getRequiredArgumentBuilderWithProvider(Argument argument,
-			SuggestionProvider<CommandListenerWrapper> provider) {
+	<T> RequiredArgumentBuilder<BukkitBrigadierCommandSource, T> getRequiredArgumentBuilderWithProvider(Argument argument,
+			SuggestionProvider<BukkitBrigadierCommandSource> provider) {
 		@SuppressWarnings("unchecked")
-		RequiredArgumentBuilder<CommandListenerWrapper, T> builder = RequiredArgumentBuilder
+		RequiredArgumentBuilder<BukkitBrigadierCommandSource, T> builder = RequiredArgumentBuilder
 				.argument(argument.getNodeName(), (ArgumentType<T>) argument.getRawType());
-		return builder.requires(clw -> permissionCheck(NMS.getCommandSenderForCLW(clw),
+		return builder.requires(clw -> permissionCheck(clw.getBukkitSender(),
 				argument.getArgumentPermission(), argument.getRequirements())).suggests(provider);
 	}
 	
@@ -790,8 +828,8 @@ public class CommandAPIHandler<CommandListenerWrapper> {
 		return args.stream().filter(arg -> arg.getNodeName().equals(nodeName)).findFirst().get();
 	}
 	
-	SuggestionProvider<CommandListenerWrapper> toSuggestions(String nodeName, List<Argument> args) {
-		return (CommandContext<CommandListenerWrapper> context, SuggestionsBuilder builder) -> {
+	SuggestionProvider<BukkitBrigadierCommandSource> toSuggestions(String nodeName, List<Argument> args) {
+		return (CommandContext<BukkitBrigadierCommandSource> context, SuggestionsBuilder builder) -> {
 			// Populate Object[], which is our previously filled arguments
 			List<Object> previousArguments = new ArrayList<>();
 
@@ -821,7 +859,7 @@ public class CommandAPIHandler<CommandListenerWrapper> {
 			return getSuggestionsBuilder(builder,
 					getArgument(args, nodeName).getOverriddenSuggestions()
 							.orElseGet(() -> (c, m) -> new IStringTooltip[0])
-							.apply(NMS.getCommandSenderForCLW(context.getSource()), previousArguments.toArray()));
+							.apply(context.getSource().getBukkitSender(), previousArguments.toArray()));
 		};
 	}
 

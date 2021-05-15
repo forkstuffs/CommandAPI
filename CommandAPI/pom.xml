@@ -26,6 +26,7 @@
 
 		<!-- Main core code + NMS selector -->
 		<module>commandapi-core</module>
+		<module>commandapi-paper</module>
 		<module>commandapi-vh</module>
 
 		<!-- Outputs -->
@@ -38,8 +39,9 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 		<maven.build.timestamp.format>dd_MMM_yyyy_(hh-mm-ssa)</maven.build.timestamp.format>
-		<maven.compiler.source>1.8</maven.compiler.source>
-		<maven.compiler.target>1.8</maven.compiler.target>
+		<maven.compiler.source>16</maven.compiler.source>
+		<maven.compiler.target>16</maven.compiler.target>
+		<java.version>16</java.version>
 	</properties>
 
 	<build>

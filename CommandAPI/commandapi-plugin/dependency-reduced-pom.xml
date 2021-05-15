@@ -30,13 +30,13 @@
                   <include>dev.jorel:commandapi-1.13.2</include>
                   <include>dev.jorel:commandapi-1.13.1</include>
                   <include>dev.jorel:commandapi-1.13</include>
-                  <include>dev.jorel:commandapi-core</include>
+                  <include>dev.jorel:commandapi-paper</include>
                   <include>dev.jorel:commandapi-vh</include>
                 </includes>
               </artifactSet>
               <filters>
                 <filter>
-                  <artifact>dev.jorel:commandapi-core</artifact>
+                  <artifact>dev.jorel:commandapi-paper</artifact>
                   <excludes>
                     <exclude>dev/jorel/commandapi/CommandAPIVersionHandler**</exclude>
                   </excludes>

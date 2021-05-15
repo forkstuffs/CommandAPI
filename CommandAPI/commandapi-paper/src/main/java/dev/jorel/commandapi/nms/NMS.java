@@ -24,6 +24,7 @@ import org.bukkit.advancement.Advancement;
 import org.bukkit.block.Biome;
 import org.bukkit.block.Block;
 import org.bukkit.block.data.BlockData;
+import org.bukkit.command.BlockCommandSender;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.enchantments.Enchantment;
@@ -198,6 +199,7 @@ public interface NMS {
 	 * @param clw The BukkitBrigadierCommandSource object
 	 * @return A CommandSender (not proxied) from the command listener wrapper
 	 */
+	@Deprecated
 	default CommandSender getCommandSenderForCLW(BukkitBrigadierCommandSource clw) {
 		return clw.getBukkitSender();
 	}
@@ -222,14 +224,41 @@ public interface NMS {
 
 			@Override
 			public @Nullable World getBukkitWorld() {
-				// TODO Implement getWorld
-				return null;
+				if(sender instanceof Entity entity) {
+					return entity.getWorld();
+				} else {
+					return null;
+				}
 			}
 
 			@Override
 			public @Nullable Location getBukkitLocation() {
-				// TODO Implement getLocation
-				return null;
+				switch(sender) {
+				
+				}
+				if(sender instanceof BlockCommandSender s) {
+					return s.getBlock().getLocation();
+				} else if(sender instanceof Entity entity) {
+					return entity.getLocation();
+				} else {
+					return null;
+				}
+				
+				if (sender instanceof Player) {
+					return ((CraftPlayer) sender).getHandle().getCommandListener();
+				} else if (sender instanceof BlockCommandSender) {
+					return ((CraftBlockCommandSender) sender).getWrapper();
+				} else if (sender instanceof CommandMinecart) {
+					return ((CraftMinecartCommand) sender).getHandle().getCommandBlock().getWrapper();
+				} else if (sender instanceof RemoteConsoleCommandSender) {
+					return ((DedicatedServer) MinecraftServer.getServer()).remoteControlCommandListener.getWrapper();
+				} else if (sender instanceof ConsoleCommandSender) {
+					return ((CraftServer) sender.getServer()).getServer().getServerCommandListener();
+				} else if (sender instanceof ProxiedCommandSender) {
+					return ((ProxiedNativeCommandSender) sender).getHandle();
+				} else {
+					throw new IllegalArgumentException("Cannot make " + sender + " a vanilla command listener");
+				}
 			}
 
 			@Override
